@@ -1,0 +1,52 @@
+name: CI / CD for bishal.dev
+
+on: [push, pull_request]
+jobs:
+  test:
+    name: Test and build public/
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: production
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 14
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v1
+        with: 
+          name: public
+          path: public/
+
+  publish:
+    name: Publish artifact to server
+    runs-on: ubuntu-latest
+    needs: test 
+    if: github.ref == 'master' || startsWith('release/', github.ref)
+    steps:
+      - name: Get build artifacts
+        uses: actions/download-artifact@master
+        with:
+          name: public
+          path: public/
+      - run: zip -r ${GITHUB_SHA}.zip public
+      - run: echo -e "${{ secrets.KEY_FILE_CONTENT }}" > KEY_FILE && chmod 600 KEY_FILE
+      - run: scp -v -i KEY_FILE -o StrictHostKeyChecking=no ${GITHUB_SHA}.zip ${{ secrets.SSH_USER_AT_HOST }}:${{ secrets.PUBLISH_DESTINATION }}
+
+  release:
+    name: Release the bad boy
+    runs-on: ubuntu-latest
+    needs: [test, publish]
+    steps:
+      - name: Create Key file
+        run: echo -e "${{ secrets.KEY_FILE_CONTENT }}" > KEY_FILE && chmod 600 KEY_FILE
+      - name: Deploy to test
+        if:  github.ref == 'master' # Deploy master branch to test env 
+        run: ssh -v -i KEY_FILE -o StrictHostKeyChecking=no ${{ secrets.SSH_USER_AT_HOST }} ${{ secrets.DEPLOY_COMMAND }} ${{secrets.PUBLISH_DESTINATION}}/${GITHUB_SHA}.zip TEST ${{ secrets.SUDO_PASSWORD }}
+      - name: Deploy to production
+        if: startswith('release/', github.ref) # Deploy release branch to production
+        run: ssh -v -i KEY_FILE -o StrictHostKeyChecking=no ${{ secrets.SSH_USER_AT_HOST }} ${{ secrets.DEPLOY_COMMAND }} ${{secrets.PUBLISH_DESTINATION}}/${GITHUB_SHA}.zip PROD ${{ secrets.SUDO_PASSWORD }}
