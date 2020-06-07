@@ -46,7 +46,7 @@ jobs:
         run: echo -e "${{ secrets.KEY_FILE_CONTENT }}" > KEY_FILE && chmod 600 KEY_FILE
       - name: Deploy to test
         if:  github.ref == 'refs/heads/master' # Deploy master branch to test env 
-        run: ssh -v -i KEY_FILE -o StrictHostKeyChecking=no ${{ secrets.SSH_USER_AT_HOST }} ${{ secrets.DEPLOY_COMMAND }} ${{secrets.PUBLISH_DESTINATION}}/${GITHUB_SHA}.zip TEST ${{ secrets.SUDO_PASSWORD }}
+        run: ssh -v -i KEY_FILE -o StrictHostKeyChecking=no ${{ secrets.SSH_USER_AT_HOST }} ${{ secrets.DEPLOY_COMMAND }} ${{secrets.PUBLISH_DESTINATION}}/${GITHUB_SHA}.zip TEST
       - name: Deploy to production
         if: contains(github.ref, 'release') # Deploy release branch to production
-        run: ssh -v -i KEY_FILE -o StrictHostKeyChecking=no ${{ secrets.SSH_USER_AT_HOST }} ${{ secrets.DEPLOY_COMMAND }} ${{secrets.PUBLISH_DESTINATION}}/${GITHUB_SHA}.zip PROD ${{ secrets.SUDO_PASSWORD }}
+        run: ssh -v -i KEY_FILE -o StrictHostKeyChecking=no ${{ secrets.SSH_USER_AT_HOST }} ${{ secrets.DEPLOY_COMMAND }} ${{secrets.PUBLISH_DESTINATION}}/${GITHUB_SHA}.zip PROD
